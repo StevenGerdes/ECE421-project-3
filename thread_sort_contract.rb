@@ -12,10 +12,15 @@ class ThreadSortContract  < Test::Unit::TestCase
     old_sorter = sorter.clone
 
     #precondition
+    #block preconditions
     assert_respond_to(:to_i, compare_block.call(object_array[0],object_array[1]) )
     assert_equal( 0, compare_block.call(object_array[0], object_array[0]))
+    #time limit preconditions
     assert_respond_to(:to_i, time_limit)
     assert_true( 0 < time_limit.to_i)
+    #array preconditions
+    assert_respond_to( :[], object_array)
+    assert_respond_to( :size, object_array)
 
     sorted_array = sorter.sort(object_array, &compare_block)
 
