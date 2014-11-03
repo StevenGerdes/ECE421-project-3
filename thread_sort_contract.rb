@@ -1,3 +1,5 @@
+gem 'test-unit'
+
 class ThreadSortContract  < Test::Unit::TestCase
 
   def sort_contract_comparitor
@@ -27,7 +29,7 @@ class ThreadSortContract  < Test::Unit::TestCase
     #postcondition
     assert_equal(object_array, old_object_array )
     sorted_array.each_index { |index |
-      assert_true( 0 < compare_block.call(sorted_array[index - 1], sorted_array[index+] ) ) unless index == 1
+      assert_true( 0 < compare_block.call(sorted_array[index - 1], sorted_array[index] ) ) unless index == 1
     }
 
     #invarient
