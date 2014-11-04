@@ -3,8 +3,10 @@ class ThreadSort
     @time_limit = time_limit.to_i
   end
 
+  #does a threaded parralel merge sort
   def sort(array_to_sort, &comparer)
-    #do a clone of the list first
+
+
     sorter = lambda do |arr|
       if arr.size == 1
         return arr
@@ -24,14 +26,15 @@ class ThreadSort
       l_sort.join
       r_sort.join
       return p_merge(left, right, &comparer)
+
     end
 
     sorter.call(array_to_sort)
-
   end
 
   private
 
+  #merges a left array and a right array recursivley and in parallel
   def p_merge(left, right, &comparer)
     merged = Array.new(left.size + right.size)
     if right.size > left.size
@@ -78,6 +81,7 @@ class ThreadSort
 
   end
 
+  #uses the comparer to see if it is in a proper range
   def range_compare(arr, left_index, right, &comparer)
     left_is_smaller = comparer.call(arr[left_index], right) <= 0
     right_is_bigger = left_index+1 >= arr.size || comparer.call(arr[left_index+1], right) >= 0
@@ -90,6 +94,8 @@ class ThreadSort
     return 0
   end
 
+  #finds the index i which satisfies arr[i] <= num <= arr[i+1]
+  #if num is smaller then -1 is returned if it is bigger size is returned
   def find_index(arr, num, &comparer)
 
     if comparer.call(num, arr[0]) < 0
@@ -120,7 +126,7 @@ class ThreadSort
 end
 
 s = ThreadSort.new(0)
-sorted = s.sort([1, 4, 11, 6, 7, 2, 5, 14, 3, 12, 13, 9, 8, 10]) { |l, r| l - r }
+sorted = s.sort([1, 4, 11, 6, 7, 2, 5, 14, 3, 12, 13, 9, 8, 10]) { |l, r|  l - r }
 puts sorted.join(',')
 sorted = s.sort([61, 46, 141, 68, 774, 22, 5, 14, 3, 132, 13, 9, 8, 10]) { |l, r| l - r }
 puts sorted.join(',')
