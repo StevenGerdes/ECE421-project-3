@@ -3,7 +3,6 @@ require 'test/unit'
 require './thread_sort'
 class ThreadSortContract < Test::Unit::TestCase
 
-
   def test_empty_list
     time_limit = 0
     arr = []

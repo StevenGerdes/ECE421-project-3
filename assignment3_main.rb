@@ -22,8 +22,7 @@ arr.map!{ rand(num_elements) }
 puts 'unsorted array:'
 puts arr.join(', ')
 
+s = ThreadSort.new(0)
 sorted = s.sort(arr){|l,r| l - r}
 puts 'sorted array:'
 puts sorted.join(', ')
-
-

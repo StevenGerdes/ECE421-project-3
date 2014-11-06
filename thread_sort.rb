@@ -12,7 +12,6 @@ class ThreadSort
   #does a threaded parralel merge sort
   def sort(array_to_sort, &comparer)
 
-
     if comparer.nil?
       comparer = Proc.new {
           |l, r|
@@ -30,12 +29,16 @@ class ThreadSort
 
     #Even though this isn't how contracts are supposed to work seeing as it is a requirement
     #checking preconditions
+    begin
     if !array_to_sort.respond_to?(:slice) ||
         !array_to_sort.respond_to?(:[]) ||
         !array_to_sort.respond_to?(:size) ||
         (array_to_sort.size > 1 && #We don't need to check the other preconditions if it is a size 1 or less array
             !comparer.call(array_to_sort[0], array_to_sort[1]).respond_to?(:to_i) ||
             comparer.call(array_to_sort[0], array_to_sort[0]) != 0)
+      pre_condition_abort
+    end
+    rescue Exception
       pre_condition_abort
     end
 
@@ -57,6 +60,7 @@ class ThreadSort
 
       l_sort.join
       r_sort.join
+
       return p_merge(left, right, &comparer)
 
     end
@@ -67,6 +71,8 @@ class ThreadSort
       }
     rescue TimeoutError
       puts 'Sort Timed Out'
+    rescue
+      puts 'An error occurred in the sort.'
     end
 
     to_return.each_index { |index|
@@ -118,30 +124,35 @@ class ThreadSort
     else
       middle = (left.size/2).floor
       j = find_index(right, left[middle], &comparer)
-
-      if j == -1
-        l_merge = Thread.new { merged[0..middle + j] = left[0..middle - 1] }
-        r_merge = Thread.new {
-          new_right = p_merge(left[middle..left.size - 1], right[j+1..right.size-1], &comparer)
-          l_merge.join #There is a race condition where the left side must be set first.
-          merged[middle + j+1 .. merged.size - 1] = new_right
-        }
-      elsif j == right.size
-        l_merge = Thread.new { merged[0..middle + j] = p_merge(left[0..middle - 1], right[0..j], &comparer) }
-        r_merge = Thread.new {
-          l_merge.join
-          merged[middle + j.. merged.size - 1] = left[middle..left.size - 1] }
-      else
-        l_merge = Thread.new { merged[0..middle + j] = p_merge(left[0..middle - 1], right[0..j], &comparer) }
-        r_merge = Thread.new {
-          new_right = p_merge(left[middle..left.size - 1], right[j+1..right.size-1], &comparer)
-          l_merge.join
-          merged[middle + j+1 .. merged.size - 1] = new_right
-        }
+      retries_left = 1
+      begin #the retry pattern will only be helpful for unexpected race conditions which is why it is only handled here
+        #which has the most likely place for race conditions
+        if j == -1
+          l_merge = Thread.new { merged[0..middle + j] = left[0..middle - 1] }
+          r_merge = Thread.new {
+            new_right = p_merge(left[middle..left.size - 1], right[j+1..right.size-1], &comparer)
+            l_merge.join #There is a race condition where the left side must be set first.
+            merged[middle + j+1 .. merged.size - 1] = new_right
+          }
+        elsif j == right.size
+          l_merge = Thread.new { merged[0..middle + j] = p_merge(left[0..middle - 1], right[0..j], &comparer) }
+          r_merge = Thread.new {
+            l_merge.join
+            merged[middle + j.. merged.size - 1] = left[middle..left.size - 1] }
+        else
+          l_merge = Thread.new { merged[0..middle + j] = p_merge(left[0..middle - 1], right[0..j], &comparer) }
+          r_merge = Thread.new {
+            new_right = p_merge(left[middle..left.size - 1], right[j+1..right.size-1], &comparer)
+            l_merge.join
+            merged[middle + j+1 .. merged.size - 1] = new_right
+          }
+        end
+        r_merge.join
+      rescue
+        raise Exception if retries_left == 0
+        retries_left -= 1
+        retry
       end
-
-      r_merge.join
-
     end
     merged
 
