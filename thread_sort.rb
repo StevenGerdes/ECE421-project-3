@@ -1,5 +1,11 @@
+require 'timeout'
 class ThreadSort
+
+  #a time limit of zero means wait forever
   def initialize(time_limit)
+    if !time_limit.respond_to?(:to_i) or time_limit.to_i < 0
+      pre_condition_abort
+    end
     @time_limit = time_limit.to_i
   end
 
@@ -7,8 +13,34 @@ class ThreadSort
   def sort(array_to_sort, &comparer)
 
 
+    if comparer.nil?
+      comparer = Proc.new {
+          |l, r|
+        if l.nil? and r.nil?
+          0
+        elsif l.nil?
+          -1
+        elsif r.nil?
+          1
+        else
+          l-r
+        end
+      }
+    end
+
+    #Even though this isn't how contracts are supposed to work seeing as it is a requirement
+    #checking preconditions
+    if !array_to_sort.respond_to?(:slice) ||
+        !array_to_sort.respond_to?(:[]) ||
+        !array_to_sort.respond_to?(:size) ||
+        (array_to_sort.size > 1 && #We don't need to check the other preconditions if it is a size 1 or less array
+            !comparer.call(array_to_sort[0], array_to_sort[1]).respond_to?(:to_i) ||
+            comparer.call(array_to_sort[0], array_to_sort[0]) != 0)
+      pre_condition_abort
+    end
+
     sorter = lambda do |arr|
-      if arr.size == 1
+      if arr.size <= 1
         return arr
       end
 
@@ -28,17 +60,51 @@ class ThreadSort
       return p_merge(left, right, &comparer)
 
     end
+    to_return = nil
+    begin
+      Timeout::timeout(@time_limit) {
+        to_return = sorter.call(array_to_sort)
+      }
+    rescue TimeoutError
+      puts 'Sort Timed Out'
+    end
 
-    sorter.call(array_to_sort)
+    to_return.each_index { |index|
+      if index > 0 and (comparer.call(to_return[index - 1], to_return[index]) > 0)
+        post_condition_abort
+      end
+    } unless to_return.nil?
+
+    to_return
+
+  end
+
+  #getter for the time_limit
+  def time_limit
+    @time_limit
+  end
+
+  #test if two thread sorts are equal
+  def == other
+    other.time_limit == @time_limit
   end
 
   private
+  def pre_condition_abort
+    abort('precondition failed')
+  end
+
+  def post_condition_abort
+    abort('postcondition failed')
+  end
 
   #merges a left array and a right array recursivley and in parallel
   def p_merge(left, right, &comparer)
     merged = Array.new(left.size + right.size)
     if right.size > left.size
       merged = p_merge(right, left, &comparer)
+    elsif right.size == 0
+      merged = left
     elsif merged.size == 1
       merged[0] = left[0]
     elsif left.size == 1 and right.size == 1
@@ -122,15 +188,4 @@ class ThreadSort
     index
 
   end
-
 end
-
-s = ThreadSort.new(0)
-sorted = s.sort([1, 4, 11, 6, 7, 2, 5, 14, 3, 12, 13, 9, 8, 10]) { |l, r|  l - r }
-puts sorted.join(',')
-sorted = s.sort([61, 46, 141, 68, 774, 22, 5, 14, 3, 132, 13, 9, 8, 10]) { |l, r| l - r }
-puts sorted.join(',')
-sorted = s.sort([15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]) { |l, r| l - r }
-puts sorted.join(',')
-sorted = s.sort([16, 54, 511, 6, 7, 2, 5, 14, 3, 12, 13, 9, 8, 10]) { |l, r| l - r }
-puts sorted.join(',')
